@@ -1,4 +1,5 @@
 import express, {Express, Request, Response} from "express"
+import {markAsUntransferable} from "worker_threads";
 
 const app : Express = express()
 const port : 3000 = 3000
@@ -38,20 +39,7 @@ type VideoType = {
     availableResolutions: AvailableResolutions[]
 }
 
-const videos : VideoType[] = [
-    {
-        id: 0,
-        title: "string",
-        author: "string",
-        canBeDownloaded: true,
-        minAgeRestriction: null,
-        createdAt: "2023-07-23T05:46:05.802Z",
-        publicationDate: "2023-07-23T05:46:05.802Z",
-        availableResolutions: [
-            AvailableResolutions.P1440
-        ]
-    }
-]
+const videos : VideoType[] = []
 
 app.get('/videos', (req: Request, res: Response) => {
     res.send(videos)
@@ -69,11 +57,7 @@ app.get('/videos/:id', (req: RequestWithParams<{id: number}>, res: Response) => 
     res.send(video)
 })
 
-app.post('/videos', (req: RequestWithBody<{
-    title: string,
-    author: string,
-    availableResolutions: AvailableResolutions[]
-}>, res: Response) => {
+app.post('/videos', (req: RequestWithBody<{ title: string, author: string, availableResolutions: AvailableResolutions[] }>, res: Response) => {
     let errors: ErrorType = {
         errorsMessages: []
     }
@@ -103,6 +87,79 @@ app.post('/videos', (req: RequestWithBody<{
         res.status(400).send(errors)
         return
     }
+
+    const createdAt = new Date()
+    const publicationDate = new Date()
+
+    publicationDate.setDate(createdAt.getDate() + 1)
+
+    const newVideo: VideoType = {
+        id: +(new Date()),
+        canBeDownloaded: false,
+        minAgeRestriction: null,
+        createdAt: createdAt.toISOString(),
+        publicationDate: publicationDate.toISOString(),
+        title,
+        author,
+        availableResolutions
+    }
+
+    videos.push(newVideo)
+
+    res.status(201).send(newVideo)
+})
+
+app.put('/videos/:id', (req: Request, res: Response) => {
+    const id  = +req.body.id
+    const video = videos.find((video) => video.id === id)
+    if(!video) {
+        res.sendStatus(404)
+        return
+    }
+
+    let {title, author, availableResolutions, canBeDownloaded, minAgeRestriction, publicationDate} = req.body
+
+    let errors: ErrorType = {
+        errorsMessages: []
+    }
+
+    if (!title || !title.length || title.trim().length > 40){
+        errors.errorsMessages.push({message: 'Invalid title', field: 'title'})
+    }
+
+    if (!author || !author.length || author.trim().length > 20){
+        errors.errorsMessages.push({message: 'Invalid author', field: 'author'})
+    }
+
+    if (Array.isArray(availableResolutions)) {
+        availableResolutions.map((r) => {
+            !AvailableResolutions[r] && errors.errorsMessages.push({
+                message: 'Invalid availableResolutions',
+                field: 'availableResolutions'
+            })
+        })
+    }
+
+    if (typeof minAgeRestriction !== null || minAgeRestriction > 18 || minAgeRestriction < 1) {
+        errors.errorsMessages.push({message: 'Invalid minAgeRestriction', field: 'minAgeRestriction'})
+    }
+
+    if (typeof canBeDownloaded !== undefined && typeof canBeDownloaded !== 'boolean') {
+        errors.errorsMessages.push({message: 'Invalid canBeDownloaded', field: 'canBeDownloaded'})
+    }
+
+    if (typeof publicationDate !== 'string') {
+        errors.errorsMessages.push({message: 'Invalid publicationDate', field: 'publicationDate'})
+    }
+
+    if (errors.errorsMessages.length){
+        res.status(400).send(errors)
+        return
+    }
+
+
+
+
 
 })
 
