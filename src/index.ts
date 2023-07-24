@@ -8,6 +8,7 @@ app.use(express.json())
 
 type RequestWithParams<P> = Request<P, {}, {}, {}>
 type RequestWithBody<B> = Request<{}, {}, B, {}>
+type RequestWithParamsAndBody<S, T> = Request<S, {}, T, {}>
 
 type ErrorMessageType = {
     message: string,
@@ -40,6 +41,10 @@ type VideoType = {
 }
 
 const videos : VideoType[] = []
+
+app.delete('/all-data', (req: Request, res: Response) => {
+    videos.length = 0
+})
 
 app.get('/videos', (req: Request, res: Response) => {
     res.send(videos)
@@ -109,9 +114,9 @@ app.post('/videos', (req: RequestWithBody<{ title: string, author: string, avail
     res.status(201).send(newVideo)
 })
 
-app.put('/videos/:id', (req: Request, res: Response) => {
-    const id  = +req.body.id
-    const video = videos.find((video) => video.id === id)
+app.put('/videos/:id', (req: RequestWithParamsAndBody<{id:number}, {title: string, author: string, canBeDownloaded: boolean, minAgeRestriction: number | null, publicationDate: string, availableResolutions: AvailableResolutions[]}>, res: Response) => {
+    const id  = +req.params.id
+    let video = videos.find((video) => video.id === id)
     if(!video) {
         res.sendStatus(404)
         return
@@ -140,16 +145,12 @@ app.put('/videos/:id', (req: Request, res: Response) => {
         })
     }
 
-    if (typeof minAgeRestriction !== null || minAgeRestriction > 18 || minAgeRestriction < 1) {
+    if (typeof minAgeRestriction == 'number' && (minAgeRestriction < 0 || minAgeRestriction > 18)) {
         errors.errorsMessages.push({message: 'Invalid minAgeRestriction', field: 'minAgeRestriction'})
     }
 
-    if (typeof canBeDownloaded !== undefined && typeof canBeDownloaded !== 'boolean') {
+    if (typeof canBeDownloaded !== 'boolean') {
         errors.errorsMessages.push({message: 'Invalid canBeDownloaded', field: 'canBeDownloaded'})
-    }
-
-    if (typeof publicationDate !== 'string') {
-        errors.errorsMessages.push({message: 'Invalid publicationDate', field: 'publicationDate'})
     }
 
     if (errors.errorsMessages.length){
@@ -157,10 +158,38 @@ app.put('/videos/:id', (req: Request, res: Response) => {
         return
     }
 
+    video = {
+        id: video.id,
+        canBeDownloaded: req.body.canBeDownloaded,
+        minAgeRestriction: req.body.minAgeRestriction,
+        createdAt: video.createdAt,
+        publicationDate: req.body.publicationDate,
+        title: req.body.title,
+        author: req.body.author,
+        availableResolutions: req.body.availableResolutions,
+    }
 
+    res.sendStatus(204)
+})
 
+app.delete('/videos/:id', (req: RequestWithParams<{id: number}>, res: Response) => {
+    const id  = +req.params.id
 
+    const video = videos.find((video) => video.id === id)
 
+    if(!video) {
+        res.sendStatus(404)
+        return
+    }
+
+    for (let i = 0; i < videos.length; i++) {
+        if (videos[i].id === id) {
+            videos.splice(i, 1)
+            break
+        }
+    }
+
+    res.sendStatus(204)
 })
 
 app.listen(port, () : void => {
