@@ -42,8 +42,9 @@ type VideoType = {
 
 const videos : VideoType[] = []
 
-app.delete('/all-data', (req: Request, res: Response) => {
+app.delete('/testing/all-data', (req: Request, res: Response) => {
     videos.length = 0
+    res.sendStatus(204)
 })
 
 app.get('/videos', (req: Request, res: Response) => {
@@ -151,6 +152,10 @@ app.put('/videos/:id', (req: RequestWithParamsAndBody<{id:number}, {title: strin
 
     if (typeof canBeDownloaded !== 'boolean') {
         errors.errorsMessages.push({message: 'Invalid canBeDownloaded', field: 'canBeDownloaded'})
+    }
+
+    if (typeof publicationDate !== 'string') {
+        errors.errorsMessages.push({message: 'Invalid publicationDate', field: 'publicationDate'})
     }
 
     if (errors.errorsMessages.length){
