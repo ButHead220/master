@@ -117,7 +117,7 @@ app.post('/videos', (req: RequestWithBody<{ title: string, author: string, avail
 
 app.put('/videos/:id', (req: RequestWithParamsAndBody<{id:number}, {title: string, author: string, canBeDownloaded: boolean, minAgeRestriction: number | null, publicationDate: string, availableResolutions: AvailableResolutions[]}>, res: Response) => {
     const id  = +req.params.id
-    let video = videos.find((video) => video.id === id)
+    let video : VideoType | undefined = videos.find((video) => video.id === id)
     if(!video) {
         res.sendStatus(404)
         return
@@ -173,6 +173,15 @@ app.put('/videos/:id', (req: RequestWithParamsAndBody<{id:number}, {title: strin
         author: req.body.author,
         availableResolutions: req.body.availableResolutions,
     }
+
+    for (let i = 0; i < videos.length; i++) {
+        if (videos[i].id === id) {
+            videos.splice(i, 1)
+            break
+        }
+    }
+
+    videos.push(video)
 
     res.sendStatus(204)
 })
