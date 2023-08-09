@@ -7,7 +7,6 @@ const app : Express = express()
 const port : 3000 = 3000
 
 app.use(express.json())
-app.use()
 
 app.use('/blogs', blogsRouter)
 app.use('/posts', postsRouter)
